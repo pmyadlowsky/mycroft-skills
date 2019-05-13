@@ -1,19 +1,17 @@
-To submit your skill, replace this file with text from 
-https://rawgit.com/MycroftAI/mycroft-skills/master/meta_editor.html
+# <img src='https://raw.githack.com/FortAwesome/Font-Awesome/master/svgs/solid/robot.svg' card_color='#40DBB0' width='50' height='50' style='vertical-align:bottom'/> Black Bean
+Skill for Broadlink Black Bean infrared controller
+
+## About
 
 
-## YOUR SKILL NAME
-Broadlink Black Bean infrared controller
+## Examples
 
-## Description 
-A more verbose description, including any extra instructions or
-information that didn't fit in the one line.
+## Credits
+Pete Yadlowsky@pmyadlowsky
 
-## Examples 
-* "Hello world"
-* "Greetings planet earth"
-* "Count up"
-* "Count down"
+## Category
+**IoT**
 
-## Credits 
-Pete Yadlowsky
+## Tags
+#blackbean
+#ircontrol
