@@ -48,24 +48,20 @@ class BlackBeanSkill(MycroftSkill):
     #   'Hello world'
     #   'Howdy you great big world'
     #   'Greetings planet earth'
-	@intent_handler(IntentBuilder("").require("Hello").require("World"))
-	def handle_hello_world_intent(self, message):
-        # In this case, respond by simply speaking a canned response.
-        # Mycroft will randomly speak one of the lines from the file
-        #    dialogs/en-us/hello.world.dialog
-		self.speak_dialog("hello.world")
-
-	@intent_handler(IntentBuilder("").require("Count").require("Dir"))
-	def handle_count_intent(self, message):
-		if message.data["Dir"] == "up":
-			self.count += 1
-		else:  # assume "down"
-			self.count -= 1
-		self.speak_dialog("count.is.now", data={"count": self.count})
-
-	@intent_handler(IntentBuilder("").require("Bean"))
-	def handle_bean_intent(self, message);
-		self.speak_dialog("echo.bean")
+#	@intent_handler(IntentBuilder("").require("Hello").require("World"))
+#	def handle_hello_world_intent(self, message):
+#        # In this case, respond by simply speaking a canned response.
+#        # Mycroft will randomly speak one of the lines from the file
+#        #    dialogs/en-us/hello.world.dialog
+#		self.speak_dialog("hello.world")
+#
+#	@intent_handler(IntentBuilder("").require("Count").require("Dir"))
+#	def handle_count_intent(self, message):
+#		if message.data["Dir"] == "up":
+#			self.count += 1
+#		else:  # assume "down"
+#			self.count -= 1
+#		self.speak_dialog("count.is.now", data={"count": self.count})
 
     # The "stop" method defines what Mycroft does when told to stop during
     # the skill's execution. In this case, since the skill's functionality
@@ -100,8 +96,15 @@ class BlackBeanSkill(MycroftSkill):
 		return (parts[0], parts[1])
 
 	def initialize():
+        bean_intent = IntentBuilder("BeanIntent").require("Bean").build()
+        self.register_intent(bean_intent,
+                             self.handle_bean_intent)
+		LOG.debug("bean intent registered")
 		self.open_controller(self.controller_name)
 		LOG.debug("IR controller opened")
+
+	def handle_bean_intent(self, message):
+		self.speak_dialog("echo.bean")
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
