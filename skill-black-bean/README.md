@@ -3,7 +3,7 @@ https://rawgit.com/MycroftAI/mycroft-skills/master/meta_editor.html
 
 
 ## YOUR SKILL NAME
-One line description of the skill
+Broadlink Black Bean infrared controller
 
 ## Description 
 A more verbose description, including any extra instructions or
@@ -16,4 +16,4 @@ information that didn't fit in the one line.
 * "Count down"
 
 ## Credits 
-Your name
+Pete Yadlowsky
