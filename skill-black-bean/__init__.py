@@ -10,6 +10,7 @@
 from adapt.intent import IntentBuilder
 from mycroft.skills.core import MycroftSkill, intent_handler
 from mycroft.util.log import LOG
+from mycroft.util.log import getLogger
 import broadlink
 import sys
 import time
@@ -71,7 +72,7 @@ class BlackBeanSkill(MycroftSkill):
     #
     # def stop(self):
     #    return False
-	def open_controller(name):
+	def open_controller(self, name):
 		dbh = sqlite3.connect(self.database)
 		c = dbh.cursor()
 		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
@@ -79,7 +80,7 @@ class BlackBeanSkill(MycroftSkill):
 				where (name='%s')""" % name)
 		data = c.fetchone()
 		if data == None:
-			LOG.debug("no such controller '" + name + "'")
+			LOG.info("no such controller '" + name + "'")
 			dbh.close()
 			return
 		self.controller = broadlink.rm((str(data[0]), data[1]),
@@ -88,19 +89,18 @@ class BlackBeanSkill(MycroftSkill):
 		dbh.close()
 		return
 
-	def parse_command(src):
+	def parse_command(self, src):
 		parts = src.split(':') # device, cmd
 		if len(parts) != 2:
 			LOG.debug("malformed command: '" + src + "'")
 			return (None, None)
 		return (parts[0], parts[1])
 
-	def initialize():
+	def initialize(self):
 		bean_intent = IntentBuilder("BeanIntent").require("Bean").build()
 		self.register_intent(bean_intent, self.handle_bean_intent)
-		LOG.debug("bean intent registered")
 		self.open_controller(self.controller_name)
-		LOG.debug("IR controller opened")
+		LOG.info("IR controller opened: " + str(self.controller))
 
 	def handle_bean_intent(self, message):
 		self.speak_dialog("echo.bean")
