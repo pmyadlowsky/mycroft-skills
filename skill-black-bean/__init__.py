@@ -26,7 +26,6 @@ LOGGER = getLogger(__name__)
 # Each skill is contained within its own class, which inherits base methods
 # from the MycroftSkill class.  You extend this class as shown below.
 
-# TODO: Change "Template" to a unique name for your skill
 class BlackBeanSkill(MycroftSkill):
 
     # The constructor of the skill, which calls MycroftSkill's constructor
@@ -48,20 +47,6 @@ class BlackBeanSkill(MycroftSkill):
     #   'Hello world'
     #   'Howdy you great big world'
     #   'Greetings planet earth'
-#	@intent_handler(IntentBuilder("").require("Hello").require("World"))
-#	def handle_hello_world_intent(self, message):
-#        # In this case, respond by simply speaking a canned response.
-#        # Mycroft will randomly speak one of the lines from the file
-#        #    dialogs/en-us/hello.world.dialog
-#		self.speak_dialog("hello.world")
-#
-#	@intent_handler(IntentBuilder("").require("Count").require("Dir"))
-#	def handle_count_intent(self, message):
-#		if message.data["Dir"] == "up":
-#			self.count += 1
-#		else:  # assume "down"
-#			self.count -= 1
-#		self.speak_dialog("count.is.now", data={"count": self.count})
 
     # The "stop" method defines what Mycroft does when told to stop during
     # the skill's execution. In this case, since the skill's functionality
@@ -180,8 +165,6 @@ class BlackBeanSkill(MycroftSkill):
 				self.controller.send_data(decoded)
 
 	def initialize(self):
-		bean_intent = IntentBuilder("BeanIntent").require("Bean").build()
-		self.register_intent(bean_intent, self.handle_bean_intent)
 		tv_power_intent = IntentBuilder("TVPowerIntent").require("TV").\
 			require("Power").build()
 		self.register_intent(tv_power_intent, self.handle_tv_power_intent)
@@ -198,9 +181,6 @@ class BlackBeanSkill(MycroftSkill):
 			self.handle_tv_chan_left_intent)
 		self.open_controller(self.controller_name)
 		LOG.info("IR controller opened: " + str(self.controller))
-
-	def handle_bean_intent(self, message):
-		self.speak_dialog("echo.bean")
 
 	def handle_tv_power_intent(self, message):
 		self.speak_dialog("tv")
