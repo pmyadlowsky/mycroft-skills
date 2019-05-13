@@ -11,15 +11,18 @@ from adapt.intent import IntentBuilder
 from mycroft.skills.core import MycroftSkill, intent_handler
 from mycroft.util.log import LOG
 
+__author__ = 'pmyadlowsky'
+LOGGER = getLogger(__name__)
+
 # Each skill is contained within its own class, which inherits base methods
 # from the MycroftSkill class.  You extend this class as shown below.
 
 # TODO: Change "Template" to a unique name for your skill
-class TemplateSkill(MycroftSkill):
+class BlackBeanSkill(MycroftSkill):
 
     # The constructor of the skill, which calls MycroftSkill's constructor
     def __init__(self):
-        super(TemplateSkill, self).__init__(name="TemplateSkill")
+        super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
         
         # Initialize working variables used within the skill.
         self.count = 0
@@ -58,8 +61,9 @@ class TemplateSkill(MycroftSkill):
     #
     # def stop(self):
     #    return False
+	def initialize():
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
 def create_skill():
-    return TemplateSkill()
+    return BlackBeanSkill()
