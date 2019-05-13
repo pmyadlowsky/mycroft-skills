@@ -96,9 +96,8 @@ class BlackBeanSkill(MycroftSkill):
 		return (parts[0], parts[1])
 
 	def initialize():
-        bean_intent = IntentBuilder("BeanIntent").require("Bean").build()
-        self.register_intent(bean_intent,
-                             self.handle_bean_intent)
+		bean_intent = IntentBuilder("BeanIntent").require("Bean").build()
+		self.register_intent(bean_intent, self.handle_bean_intent)
 		LOG.debug("bean intent registered")
 		self.open_controller(self.controller_name)
 		LOG.debug("IR controller opened")
