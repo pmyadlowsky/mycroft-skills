@@ -65,7 +65,7 @@ class BlackBeanSkill(MycroftSkill):
 
 	@intent_handler(IntentBuilder("").require("Bean"))
 	def handle_bean_intent(self, message);
-		self.speak_dialog("echo bean")
+		self.speak_dialog("echo.bean")
 
     # The "stop" method defines what Mycroft does when told to stop during
     # the skill's execution. In this case, since the skill's functionality
