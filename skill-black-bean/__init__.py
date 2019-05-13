@@ -29,7 +29,9 @@ class BlackBeanSkill(MycroftSkill):
     # The constructor of the skill, which calls MycroftSkill's constructor
 	def __init__(self):
 		super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
-		self.controller = "blackbean"
+		self.controller_name = "blackbean"
+		self.controller = None
+		self.controller_timeout = None
 		self.database = "/home/pmy/BlackBeanControl/bean.db"
         
         # Initialize working variables used within the skill.
@@ -69,7 +71,32 @@ class BlackBeanSkill(MycroftSkill):
     #
     # def stop(self):
     #    return False
+	def open_controller(name):
+		dbh = sqlite3.connect(self.database)
+		c = dbh.cursor()
+		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
+				from controllers
+				where (name='%s')""" % name)
+		data = c.fetchone()
+		if data == None:
+			LOG.debug("no such controller '" + name + "'")
+			dbh.close()
+			return
+		self.controller = broadlink.rm((str(data[0]), data[1]),
+							str(data[2]), data[3])
+		self.controller_timeout = data[4]
+		dbh.close()
+		return
+
+	def parse_command(src):
+		parts = src.split(':') # device, cmd
+		if len(parts) != 2:
+			LOG.debug("malformed command: '" + src + "'")
+			return (None, None)
+		return (parts[0], parts[1])
+
 	def initialize():
+		self.open_controller(self.controller_name)
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
