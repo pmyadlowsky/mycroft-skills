@@ -63,6 +63,10 @@ class BlackBeanSkill(MycroftSkill):
 			self.count -= 1
 		self.speak_dialog("count.is.now", data={"count": self.count})
 
+	@intent_handler(IntentBuilder("").require("Bean"))
+	def handle_bean_intent(self, message);
+		self.speak_dialog("echo bean")
+
     # The "stop" method defines what Mycroft does when told to stop during
     # the skill's execution. In this case, since the skill's functionality
     # is extremely simple, there is no need to override it.  If you DO
