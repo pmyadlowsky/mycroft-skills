@@ -22,6 +22,21 @@ import sqlite3
 
 __author__ = 'pmyadlowsky'
 LOGGER = getLogger(__name__)
+Digits = {
+	'one': 1,
+	'two': 2,
+	'three': 3,
+	'four': 4,
+	'for': 4,
+	'five': 5,
+	'six': 6,
+	'seven': 7,
+	'eight': 8,
+	'nine': 9,
+	'ten': 10,
+	'alittle': 4,
+	'alot': 10
+	}
 
 # Each skill is contained within its own class, which inherits base methods
 # from the MycroftSkill class.  You extend this class as shown below.
@@ -154,8 +169,11 @@ class BlackBeanSkill(MycroftSkill):
 
 	def send_command_dumb(self, command):
 		os.system("cd /home/pmy/BlackBeanControl; ./beanctl.py -c " + command)
-	def send_command(self, command):
-		commands = self.collect_command_codes(command)
+	def send_command(self, command_list):
+		command_stream = command_list.split(",")
+		commands = []
+		for cmd in command_stream:
+			commands.extend(self.collect_command_codes(cmd))
 		for cmd in commands:
 			(delay, msec) = self.is_delay(cmd)
 			if delay:
@@ -179,23 +197,60 @@ class BlackBeanSkill(MycroftSkill):
 			require("TV").require("Channel").require("Left").build()
 		self.register_intent(tv_chan_left_intent,
 			self.handle_tv_chan_left_intent)
+		tv_volume_intent = IntentBuilder("TVVolumeIntent").\
+			require("TV").require("Volume").require("Dir")
+		self.register_intent(tv_volume_intent,
+			self.handle_tv_volume_intent)
 		self.open_controller(self.controller_name)
 		LOG.info("IR controller opened: " + str(self.controller))
 
+	def handle_tv_volume_intent(self, message):
+		LOG.info("MSG " + str(message.data))
+		direction = message.data['Dir']
+		if (direction == "up") or (direction == "plus"):
+			command = "TV:VOL+"
+		else:
+			command = "TV:VOL-"
+		words = message.data['utterance'].split(" ")
+		words.remove(message.data['TV'])
+		words.remove(message.data['Volume'])
+		words.remove(message.data['Dir'])
+		amount = "".join(words)
+		LOG.info("amount |" + amount + "|")
+		if amount == "":
+			amount = 3
+		elif amount in Digits:
+			LOG.info("found " + amount + " in digits")
+			amount = Digits[amount]
+		else:
+			amount = re.sub("[^\\d]", "", amount)
+			LOG.info("amount |" + amount + "|")
+			if amount != "":
+				amount = int(amount)
+			else:
+				self.speak_dialog("bad.volume.amount")
+				return
+		LOG.info("VOLUME " + direction + " " + str(amount))
+		self.speak_dialog("bean.ok")
+		reps = []
+		for i in range(amount):
+			reps.append(command)
+		self.send_command(",".join(reps))
+
 	def handle_tv_power_intent(self, message):
-		self.speak_dialog("tv")
+		self.speak_dialog("bean.ok")
 		self.send_command("TV:PWR")
 
 	def handle_tv_mute_intent(self, message):
-		self.speak_dialog("tv")
+		self.speak_dialog("bean.ok")
 		self.send_command("TV:MUTE")
 
 	def handle_tv_chan_right_intent(self, message):
-		self.speak_dialog("tv")
+		self.speak_dialog("bean.ok")
 		self.send_command("TV:CH+")
 
 	def handle_tv_chan_left_intent(self, message):
-		self.speak_dialog("tv")
+		self.speak_dialog("bean.ok")
 		self.send_command("TV:CH-")
 
 # The "create_skill()" method is used to create an instance of the skill.
