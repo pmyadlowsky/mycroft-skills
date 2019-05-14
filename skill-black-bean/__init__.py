@@ -79,6 +79,7 @@ class BlackBeanSkill(MycroftSkill):
 			array.append(int(piece, 16))
 		return array
 	def open_controller(self, name):
+		# open Black Bean IR controller
 		dbh = sqlite3.connect(self.database)
 		c = dbh.cursor()
 		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
@@ -112,9 +113,10 @@ class BlackBeanSkill(MycroftSkill):
 		if data == None:
 			return None
 		else:
-			return data[0]
+			return int(data[0])
 
 	def get_command_code(self, command):
+		# look up IR code for given device and command
 		(device, cmd) = self.parse_command(command)
 		if device == None:
 			return None
@@ -139,6 +141,7 @@ class BlackBeanSkill(MycroftSkill):
 		return code
 
 	def is_delay(self, cmd):
+		# command stream may embed msec delays coded as "(<n>)"
 		m = re.search("^\((\d+)\)$", cmd)
 		if m:
 			return (True, int(m.group(1)))
@@ -146,6 +149,7 @@ class BlackBeanSkill(MycroftSkill):
 			return (False, 0)
 
 	def collect_command_codes(self, command, history = []):
+		# recursively collect IR codes from command stream
 		(delay, ms) = self.is_delay(command)
 		if delay:
 			return [command]
@@ -153,7 +157,7 @@ class BlackBeanSkill(MycroftSkill):
 		if code == None:
 			return []
 		m = re.search("^\\[([^\\]\\[]+)\\]$", code)
-		if m: # code sequence
+		if m: # command sequence
 			if command in history: # infinite recursion
 				LOG.info("command loop detected")
 				return []
@@ -167,9 +171,8 @@ class BlackBeanSkill(MycroftSkill):
 		else: # IR code
 			return [code]
 
-	def send_command_dumb(self, command):
-		os.system("cd /home/pmy/BlackBeanControl; ./beanctl.py -c " + command)
 	def send_command(self, command_list):
+		# send IR code sequence to IR controller
 		command_stream = command_list.split(",")
 		commands = []
 		for cmd in command_stream:
@@ -183,12 +186,14 @@ class BlackBeanSkill(MycroftSkill):
 				self.controller.send_data(decoded)
 
 	def compose_intent(self, verbs):
+		# compose intent object from list of vocab verbs
 		builder = IntentBuilder("_".join(verbs))
 		for verb in verbs:
 			builder.require(verb)
 		return builder.build()
 		
 	def compose_handler(self, command, response):
+		# compose intent handler as a closure
 		def handler(message):
 			LOG.info("HMSG " + str(message.data))
 			self.send_command(command)
@@ -196,6 +201,7 @@ class BlackBeanSkill(MycroftSkill):
 		return handler
 			
 	def initialize(self):
+		# compose verbal command grammar and command responses
 		self.register_intent(
 			self.compose_intent(["TV", "Power"]),
 			self.compose_handler("TV:PWR", "bean.ok"))
