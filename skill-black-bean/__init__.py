@@ -188,19 +188,26 @@ class BlackBeanSkill(MycroftSkill):
 			builder.require(verb)
 		return builder.build()
 		
+	def compose_handler(self, command, response):
+		def handler(message):
+			LOG.info("HMSG " + str(message.data))
+			self.send_command(command)
+			self.speak_dialog(response)
+		return handler
+			
 	def initialize(self):
 		self.register_intent(
 			self.compose_intent(["TV", "Power"]),
-			self.handle_tv_power_intent)
+			self.compose_handler("TV:PWR", "bean.ok"))
 		self.register_intent(
 			self.compose_intent(["TV", "Mute"]),
-			self.handle_tv_mute_intent)
+			self.compose_handler("TV:MUTE", "bean.ok"))
 		self.register_intent(
 			self.compose_intent(["TV", "Channel", "Right"]),
-			self.handle_tv_chan_right_intent)
+			self.compose_handler("TV:CH+", "bean.ok"))
 		self.register_intent(
 			self.compose_intent(["TV", "Channel", "Left"]),
-			self.handle_tv_chan_left_intent)
+			self.compose_handler("TV:CH-", "bean.ok"))
 		self.register_intent(
 			self.compose_intent(["TV", "Volume", "Dir"]),
 			self.handle_tv_volume_intent)
@@ -239,22 +246,6 @@ class BlackBeanSkill(MycroftSkill):
 		for i in range(amount):
 			reps.append(command)
 		self.send_command(",".join(reps))
-
-	def handle_tv_power_intent(self, message):
-		self.speak_dialog("bean.ok")
-		self.send_command("TV:PWR")
-
-	def handle_tv_mute_intent(self, message):
-		self.speak_dialog("bean.ok")
-		self.send_command("TV:MUTE")
-
-	def handle_tv_chan_right_intent(self, message):
-		self.speak_dialog("bean.ok")
-		self.send_command("TV:CH+")
-
-	def handle_tv_chan_left_intent(self, message):
-		self.speak_dialog("bean.ok")
-		self.send_command("TV:CH-")
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
