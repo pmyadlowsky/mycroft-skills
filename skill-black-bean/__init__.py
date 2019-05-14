@@ -182,24 +182,27 @@ class BlackBeanSkill(MycroftSkill):
 				decoded = binascii.a2b_hex(cmd)
 				self.controller.send_data(decoded)
 
+	def compose_intent(self, verbs):
+		builder = IntentBuilder("_".join(verbs))
+		for verb in verbs:
+			builder.require(verb)
+		return builder.build()
+		
 	def initialize(self):
-		tv_power_intent = IntentBuilder("TVPowerIntent").require("TV").\
-			require("Power").build()
-		self.register_intent(tv_power_intent, self.handle_tv_power_intent)
-		tv_mute_intent = IntentBuilder("TVMuteIntent").require("TV").\
-			require("Mute").build()
-		self.register_intent(tv_mute_intent, self.handle_tv_mute_intent)
-		tv_chan_right_intent = IntentBuilder("TVChannelRightIntent").\
-			require("TV").require("Channel").require("Right").build()
-		self.register_intent(tv_chan_right_intent,
+		self.register_intent(
+			self.compose_intent(["TV", "Power"]),
+			self.handle_tv_power_intent)
+		self.register_intent(
+			self.compose_intent(["TV", "Mute"]),
+			self.handle_tv_mute_intent)
+		self.register_intent(
+			self.compose_intent(["TV", "Channel", "Right"]),
 			self.handle_tv_chan_right_intent)
-		tv_chan_left_intent = IntentBuilder("TVChannelLeftIntent").\
-			require("TV").require("Channel").require("Left").build()
-		self.register_intent(tv_chan_left_intent,
+		self.register_intent(
+			self.compose_intent(["TV", "Channel", "Left"]),
 			self.handle_tv_chan_left_intent)
-		tv_volume_intent = IntentBuilder("TVVolumeIntent").\
-			require("TV").require("Volume").require("Dir")
-		self.register_intent(tv_volume_intent,
+		self.register_intent(
+			self.compose_intent(["TV", "Volume", "Dir"]),
 			self.handle_tv_volume_intent)
 		self.open_controller(self.controller_name)
 		LOG.info("IR controller opened: " + str(self.controller))
