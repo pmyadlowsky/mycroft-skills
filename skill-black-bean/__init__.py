@@ -245,7 +245,10 @@ class BlackBeanSkill(MycroftSkill):
 				elif directive == "DIGITS":
 					command_stream = self.vary_command(command, count)
 			self.speak_dialog(response)
-			self.send_command(command_stream)
+			if command == "":
+				LOG.info("NULL COMMAND")
+			else:
+				self.send_command(command_stream)
 		return handler
 			
 	def add_command(self, verbs, device_command, response):
