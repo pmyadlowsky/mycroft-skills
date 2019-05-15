@@ -17,6 +17,8 @@ import os
 import time
 import binascii
 import string
+import threading
+import queue
 import re
 import sqlite3
 
@@ -48,6 +50,7 @@ class BlackBeanSkill(MycroftSkill):
 		self.controller = None
 		self.controller_timeout = None
 		self.database = "/home/pmy/BlackBeanControl/bean.db"
+		self.command_queue = queue.SimpleQueue()
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
     # skill's intent is matched.  The intent is defined by the IntentBuilder()
@@ -244,11 +247,13 @@ class BlackBeanSkill(MycroftSkill):
 					command_stream = self.repeat_command(command, count)
 				elif directive == "DIGITS":
 					command_stream = self.vary_command(command, count)
-			self.speak_dialog(response)
+			LOG.info("STREAM " + command_stream)
 			if command == "":
 				LOG.info("NULL COMMAND")
 			else:
-				self.send_command(command_stream)
+				LOG.info("QUEUE " + command_stream)
+				self.command_queue.put(command_stream)
+			self.speak_dialog(response)
 		return handler
 			
 	def add_command(self, verbs, device_command, response):
@@ -264,12 +269,31 @@ class BlackBeanSkill(MycroftSkill):
 			self.compose_handler(proper_verbs, directives,
 				device_command, response))
 
+	def process_commands(self):
+		LOG.info("ENTER COMMAND THREAD")
+		running = True
+		while running:
+			while not self.command_queue.empty():
+				command_stream = self.command_queue.get()
+				if command_stream == "!STOP!":
+					running = False
+					break
+				LOG.info("send command")
+				self.send_command(command_stream)
+			if running:
+				time.sleep(1.0)
+		LOG.info("EXIT COMMAND THREAD")
+
 	def initialize(self):
 		# compose verbal command grammar and command responses
+		self.controller_thread = \
+			threading.Thread(None, self.process_commands)
+		self.controller_thread.start()
 		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
 		self.add_command(["TV", "Channel", "Up"], "TV:CH+", "bean.ok")
 		self.add_command(["TV", "Channel", "Down"], "TV:CH-", "bean.ok")
+		self.add_command(["TV", "Channel", "#DIGITS"], "TV:CHAN", "bean.ok")
 		self.add_command(["TV", "Volume", "Up", "#REP"],
 			"TV:VOL+", "bean.ok")
 		self.add_command(["TV", "Volume", "Down", "#REP"],
