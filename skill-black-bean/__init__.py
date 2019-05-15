@@ -185,6 +185,30 @@ class BlackBeanSkill(MycroftSkill):
 				decoded = binascii.a2b_hex(cmd)
 				self.controller.send_data(decoded)
 
+	def pruned_message(self, msg_obj, verb_keys):
+		# remove known verbs found in utterance, returning
+		# the remainder
+		words = msg_obj.data['utterance'].split(" ")
+		for key in verb_keys:
+			words.remove(msg_obj.data[key])
+		return words
+
+	def wring_number(self, words):
+		# search words for numeric content, reduce and evaluate
+		if len(words) == 0:
+			return None
+		dgt = []
+		for word in words:
+			if word in Digits:
+				dgt.append(str(Digits['word']))
+			else:
+				dgt.append(word)
+		mash = re.sub("[^\\d]", "", "".join(dgt)) # strip non-digits
+		if mash == "":
+			return None
+		else:
+			return int(mash)
+			
 	def compose_intent(self, verbs):
 		# compose intent object from list of vocab verbs
 		builder = IntentBuilder("_".join(verbs))
@@ -227,25 +251,11 @@ class BlackBeanSkill(MycroftSkill):
 			command = "TV:VOL+"
 		else:
 			command = "TV:VOL-"
-		words = message.data['utterance'].split(" ")
-		words.remove(message.data['TV'])
-		words.remove(message.data['Volume'])
-		words.remove(message.data['Dir'])
-		amount = "".join(words)
-		LOG.info("amount |" + amount + "|")
-		if amount == "":
+		words = self.pruned_message(message, ["TV", "Volume", "Dir"])
+		amount = self.wring_number(words)
+		LOG.info("amount |" + str(amount) + "|")
+		if amount == None:
 			amount = 3
-		elif amount in Digits:
-			LOG.info("found " + amount + " in digits")
-			amount = Digits[amount]
-		else:
-			amount = re.sub("[^\\d]", "", amount)
-			LOG.info("amount |" + amount + "|")
-			if amount != "":
-				amount = int(amount)
-			else:
-				self.speak_dialog("bad.volume.amount")
-				return
 		LOG.info("VOLUME " + direction + " " + str(amount))
 		self.speak_dialog("bean.ok")
 		reps = []
