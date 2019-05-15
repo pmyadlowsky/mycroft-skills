@@ -49,6 +49,8 @@ class BlackBeanSkill(MycroftSkill):
 		self.controller_name = "blackbean"
 		self.controller = None
 		self.controller_timeout = None
+		self.controller_thread = None
+		self.thread_running = False
 		self.database = "/home/pmy/BlackBeanControl/bean.db"
 		self.command_queue = queue.SimpleQueue()
 
@@ -70,8 +72,11 @@ class BlackBeanSkill(MycroftSkill):
     # need to implement stop, you should return True to indicate you handled
     # it.
     #
-    # def stop(self):
-    #    return False
+	def stop(self):
+		if self.thread_running:
+			self.thread_running = False
+			self.controller_thread.join()
+		return True
 	def mac_array(self, mac_address):
 		# convert colon-delimited hex MAC address to byte array
 		parts = mac_address.split(":")
@@ -270,13 +275,13 @@ class BlackBeanSkill(MycroftSkill):
 
 	def process_commands(self):
 		LOG.info("ENTER COMMAND THREAD")
-		running = True
-		while running:
+		self.thread_running = True
+		while self.thread_running:
 			while not self.command_queue.empty():
 				code = self.command_queue.get()
 				LOG.info("send " + str(len(code)) + " bytes")
 				self.controller.send_data(code)
-			if running:
+			if self.thread_running:
 				time.sleep(1.0)
 		LOG.info("EXIT COMMAND THREAD")
 
