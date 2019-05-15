@@ -184,7 +184,7 @@ class BlackBeanSkill(MycroftSkill):
 				time.sleep(msec / 1000.0)
 			else:
 				decoded = binascii.a2b_hex(cmd)
-				self.controller.send_data(decoded)
+				self.command_queue.put(decoded)
 
 	def pruned_message(self, msg_obj, verb_keys):
 		# remove known verbs found in utterance, returning
@@ -201,7 +201,7 @@ class BlackBeanSkill(MycroftSkill):
 		dgt = []
 		for word in words:
 			if word in Digits:
-				dgt.append(str(Digits['word']))
+				dgt.append(str(Digits[word]))
 			else:
 				dgt.append(word)
 		mash = re.sub("[^\\d]", "", "".join(dgt)) # strip non-digits
@@ -247,12 +247,11 @@ class BlackBeanSkill(MycroftSkill):
 					command_stream = self.repeat_command(command, count)
 				elif directive == "DIGITS":
 					command_stream = self.vary_command(command, count)
-			LOG.info("STREAM " + command_stream)
+#			LOG.info("STREAM " + command_stream)
 			if command == "":
 				LOG.info("NULL COMMAND")
 			else:
-				LOG.info("QUEUE " + command_stream)
-				self.command_queue.put(command_stream)
+				self.send_command(command_stream)
 			self.speak_dialog(response)
 		return handler
 			
@@ -274,12 +273,9 @@ class BlackBeanSkill(MycroftSkill):
 		running = True
 		while running:
 			while not self.command_queue.empty():
-				command_stream = self.command_queue.get()
-				if command_stream == "!STOP!":
-					running = False
-					break
-				LOG.info("send command")
-				self.send_command(command_stream)
+				code = self.command_queue.get()
+				LOG.info("send " + str(len(code)) + " bytes")
+				self.controller.send_data(code)
 			if running:
 				time.sleep(1.0)
 		LOG.info("EXIT COMMAND THREAD")
