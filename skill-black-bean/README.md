@@ -7,7 +7,6 @@ This skill uses the [python-broadlink](https://github.com/mjg59/python-broadlink
 ## Examples
 
 ## Credits
-Pete Yadlowsky@pmyadlowsky
 
 ## Category
 **IoT**
