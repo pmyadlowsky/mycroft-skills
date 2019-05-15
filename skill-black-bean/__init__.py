@@ -33,9 +33,7 @@ Digits = {
 	'seven': 7,
 	'eight': 8,
 	'nine': 9,
-	'ten': 10,
-	'alittle': 4,
-	'alot': 10
+	'ten': 10
 	}
 
 # Each skill is contained within its own class, which inherits base methods
@@ -216,52 +214,65 @@ class BlackBeanSkill(MycroftSkill):
 			builder.require(verb)
 		return builder.build()
 		
-	def compose_handler(self, command, response):
+	def repeat_command(self, command, reps):
+			if reps == None:
+				return command
+			command_stream = []
+			for i in range(reps):
+				command_stream.append(command)
+			return ",".join(command_stream)
+
+	def vary_command(self, command, digits):
+			if digits == None:
+				return command
+			command_stream = []
+			for digit in str(digits):
+				command_stream.append(command + digit)
+			return ",".join(command_stream)
+
+	def compose_handler(self, verbs, directives, command, response):
 		# compose intent handler as a closure
 		def handler(message):
 			LOG.info("HMSG " + str(message.data))
-			self.send_command(command)
+			words = self.pruned_message(message, verbs)
+			count = self.wring_number(words)
+			LOG.info("PRUNED " + str(words))
+			LOG.info("DIRECTIVES " + str(directives))
+			command_stream = command
+			for directive in directives:
+				if directive == "REP":
+					command_stream = self.repeat_command(command, count)
+				elif directive == "DIGITS":
+					command_stream = self.vary_command(command, count)
 			self.speak_dialog(response)
+			self.send_command(command_stream)
 		return handler
 			
+	def add_command(self, verbs, device_command, response):
+		proper_verbs = []
+		directives = []
+		for verb in verbs:
+			if verb[0] == '#':
+				directives.append(verb[1:])
+			else:
+				proper_verbs.append(verb)
+		self.register_intent(
+			self.compose_intent(proper_verbs),
+			self.compose_handler(proper_verbs, directives,
+				device_command, response))
+
 	def initialize(self):
 		# compose verbal command grammar and command responses
-		self.register_intent(
-			self.compose_intent(["TV", "Power"]),
-			self.compose_handler("TV:PWR", "bean.ok"))
-		self.register_intent(
-			self.compose_intent(["TV", "Mute"]),
-			self.compose_handler("TV:MUTE", "bean.ok"))
-		self.register_intent(
-			self.compose_intent(["TV", "Channel", "Right"]),
-			self.compose_handler("TV:CH+", "bean.ok"))
-		self.register_intent(
-			self.compose_intent(["TV", "Channel", "Left"]),
-			self.compose_handler("TV:CH-", "bean.ok"))
-		self.register_intent(
-			self.compose_intent(["TV", "Volume", "Dir"]),
-			self.handle_tv_volume_intent)
+		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
+		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
+		self.add_command(["TV", "Channel", "Up"], "TV:CH+", "bean.ok")
+		self.add_command(["TV", "Channel", "Down"], "TV:CH-", "bean.ok")
+		self.add_command(["TV", "Volume", "Up", "#REP"],
+			"TV:VOL+", "bean.ok")
+		self.add_command(["TV", "Volume", "Down", "#REP"],
+			"TV:VOL-", "bean.ok")
 		self.open_controller(self.controller_name)
 		LOG.info("IR controller opened: " + str(self.controller))
-
-	def handle_tv_volume_intent(self, message):
-		LOG.info("MSG " + str(message.data))
-		direction = message.data['Dir']
-		if (direction == "up") or (direction == "plus"):
-			command = "TV:VOL+"
-		else:
-			command = "TV:VOL-"
-		words = self.pruned_message(message, ["TV", "Volume", "Dir"])
-		amount = self.wring_number(words)
-		LOG.info("amount |" + str(amount) + "|")
-		if amount == None:
-			amount = 3
-		LOG.info("VOLUME " + direction + " " + str(amount))
-		self.speak_dialog("bean.ok")
-		reps = []
-		for i in range(amount):
-			reps.append(command)
-		self.send_command(",".join(reps))
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
