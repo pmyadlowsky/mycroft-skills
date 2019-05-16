@@ -20,7 +20,7 @@ import string
 import threading
 import queue
 import re
-import sqlite3
+import mysql.connector
 
 __author__ = 'pmyadlowsky'
 LOGGER = getLogger(__name__)
@@ -51,8 +51,9 @@ class BlackBeanSkill(MycroftSkill):
 		self.controller_timeout = None
 		self.controller_thread = None
 		self.thread_running = False
-		self.database = "/home/pmy/BlackBeanControl/bean.db"
-		self.command_queue = queue.SimpleQueue()
+		self.database = "black-bean"
+		self.dbuser = "root"
+		self.command_queue = queue.Queue()
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
     # skill's intent is matched.  The intent is defined by the IntentBuilder()
@@ -84,9 +85,13 @@ class BlackBeanSkill(MycroftSkill):
 		for piece in parts:
 			array.append(int(piece, 16))
 		return array
+	def open_db(self):
+		return mysql.connector.connect(user=self.dbuser,
+			database=self.database)
+
 	def open_controller(self, name):
 		# open Black Bean IR controller
-		dbh = sqlite3.connect(self.database)
+		dbh = self.open_db()
 		c = dbh.cursor()
 		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
 				from controllers
@@ -126,7 +131,7 @@ class BlackBeanSkill(MycroftSkill):
 		(device, cmd) = self.parse_command(command)
 		if device == None:
 			return None
-		dbh = sqlite3.connect(self.database)
+		dbh = self.open_db()
 		c = dbh.cursor()
 		dev_id = self.get_device_id(device, c)
 		if dev_id == None:
