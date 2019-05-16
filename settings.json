@@ -1,6 +1,1 @@
-{
-	"__mycroft_skill_firstrun": false,
-	"ir-database": "black-bean",
-	"ir-database-user": "root",
-	"default-controller": "blackbean"
-	}
+{"default-controller": "blackbean", "ir-database": "black-bean", "__mycroft_skill_firstrun": false, "ir-database-user": "root"}
