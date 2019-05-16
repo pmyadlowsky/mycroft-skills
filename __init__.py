@@ -48,7 +48,6 @@ class BlackBeanSkill(MycroftSkill):
 		super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
 		self.controller_name = "blackbean"
 		self.controller = None
-		self.controller_timeout = None
 		self.controller_thread = None
 		self.thread_running = False
 		self.database = "black-bean"
@@ -78,6 +77,7 @@ class BlackBeanSkill(MycroftSkill):
 			self.thread_running = False
 			self.controller_thread.join()
 		return True
+
 	def mac_array(self, mac_address):
 		# convert colon-delimited hex MAC address to byte array
 		parts = mac_address.split(":")
@@ -85,6 +85,7 @@ class BlackBeanSkill(MycroftSkill):
 		for piece in parts:
 			array.append(int(piece, 16))
 		return array
+
 	def open_db(self):
 		return mysql.connector.connect(user=self.dbuser,
 			database=self.database)
@@ -112,18 +113,25 @@ class BlackBeanSkill(MycroftSkill):
 		dbh.close()
 		if data == None:
 			LOG.info("no such controller '" + name + "'")
-			return
+			return None
 		mac_addr = str(data[2])
 		ip_addr = self.find_ip(mac_addr)
 		if ip_addr == None:
 			ip_addr = str(data[0])
+		else:
+			LOG.info("discovered controller '" + name +
+				"' IP address: " + ip_addr)
 		port = int(data[1])
 		dev = int(data[3])
 		mac_bytes = self.mac_array(str(data[2]))
-		self.controller = broadlink.rm((ip_addr, port), mac_bytes, dev)
-		self.controller.auth()
-		self.controller_timeout = data[4]
-		return
+		controller = broadlink.rm((ip_addr, port), mac_bytes, dev)
+		try:
+			controller.auth()
+			LOG.info("controller '" + name + "' opened")
+		except:
+			LOG.info("controller '" + name + "' unresponsive")
+			controller = None
+		return controller
 
 	def parse_command(self, src):
 		parts = src.split(':') # device, cmd
@@ -298,8 +306,9 @@ class BlackBeanSkill(MycroftSkill):
 		while self.thread_running:
 			while not self.command_queue.empty():
 				code = self.command_queue.get()
-				LOG.info("send " + str(len(code)) + " bytes")
-				self.controller.send_data(code)
+				if self.controller != None:
+					LOG.info("send " + str(len(code)) + " bytes")
+					self.controller.send_data(code)
 			if self.thread_running:
 				time.sleep(1.0)
 		LOG.info("EXIT COMMAND THREAD")
@@ -318,8 +327,7 @@ class BlackBeanSkill(MycroftSkill):
 			"TV:VOL+", "bean.ok")
 		self.add_command(["TV", "Volume", "Down", "#REP"],
 			"TV:VOL-", "bean.ok")
-		self.open_controller(self.controller_name)
-		LOG.info("IR controller opened: " + str(self.controller))
+		self.controller = self.open_controller(self.controller_name)
 
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
