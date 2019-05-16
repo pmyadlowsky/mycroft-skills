@@ -75,6 +75,24 @@ class BlackBeanSkill(MycroftSkill):
 			self.controller_thread.join()
 		return True
 
+	def probe_net(self):
+		# Try to determine interface wlan0's IP address,
+		# then use that and nmap to populate the ARP cache.
+		# This is to help mycroft skills look up local
+		# device IP addresses by their MAC addresses.
+		pipe = os.popen("ip addr|grep wlan0|grep inet")
+		line = pipe.read()
+		pipe.close()
+		match = re.search("inet ([0-9\\.]+)", line)
+		if match:
+			LOG.info("PROBE LOCAL NET...")
+			ip_addr = match.group(1)
+			os.system("/usr/bin/nmap >/dev/null 2>&1 -sn " +
+				re.sub("\\d+$", "0/24", ip_addr))
+			LOG.info("PROBE DONE")
+		else:
+			LOG.info("could not determine local wifi network")
+
 	def mac_array(self, mac_address):
 		# convert colon-delimited hex MAC address to byte array
 		parts = mac_address.split(":")
@@ -311,6 +329,7 @@ class BlackBeanSkill(MycroftSkill):
 
 	def initialize(self):
 		# compose verbal command grammar and command responses
+		self.probe_net()
 		self.controller_thread = \
 			threading.Thread(None, self.process_commands)
 		self.controller_thread.start()
