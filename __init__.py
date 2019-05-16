@@ -89,6 +89,18 @@ class BlackBeanSkill(MycroftSkill):
 		return mysql.connector.connect(user=self.dbuser,
 			database=self.database)
 
+	def find_ip(self, mac_address):
+		lmac_address = mac_address.lower()
+		pipe = os.popen("arp -na")
+		ip_address = None
+		for line in pipe.read().split("\n"):
+			match = re.search("\\(([^\\)]+)\\) at ([0-9a-f:]+)", line)
+			if match and (match.group(2) == lmac_address):
+				ip_address = match.group(1)
+				break
+		pipe.close
+		return ip_address
+
 	def open_controller(self, name):
 		# open Black Bean IR controller
 		dbh = self.open_db()
@@ -97,18 +109,20 @@ class BlackBeanSkill(MycroftSkill):
 				from controllers
 				where (name='%s')""" % name)
 		data = c.fetchone()
+		dbh.close()
 		if data == None:
 			LOG.info("no such controller '" + name + "'")
-			dbh.close()
 			return
-		ip_addr = str(data[0])
+		mac_addr = str(data[2])
+		ip_addr = self.find_ip(mac_addr)
+		if ip_addr == None:
+			ip_addr = str(data[0])
 		port = int(data[1])
 		dev = int(data[3])
-		mac_addr = self.mac_array(str(data[2]))
-		self.controller = broadlink.rm((ip_addr, port), mac_addr, dev)
+		mac_bytes = self.mac_array(str(data[2]))
+		self.controller = broadlink.rm((ip_addr, port), mac_bytes, dev)
 		self.controller.auth()
 		self.controller_timeout = data[4]
-		dbh.close()
 		return
 
 	def parse_command(self, src):
@@ -246,7 +260,7 @@ class BlackBeanSkill(MycroftSkill):
 	def compose_handler(self, verbs, directives, command, response):
 		# compose intent handler as a closure
 		def handler(message):
-			LOG.info("HMSG " + str(message.data))
+#			LOG.info("HMSG " + str(message.data))
 			words = self.pruned_message(message, verbs)
 			count = self.wring_number(words)
 			LOG.info("PRUNED " + str(words))
