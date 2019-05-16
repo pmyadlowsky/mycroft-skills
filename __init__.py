@@ -46,12 +46,9 @@ class BlackBeanSkill(MycroftSkill):
     # The constructor of the skill, which calls MycroftSkill's constructor
 	def __init__(self):
 		super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
-		self.controller_name = "blackbean"
 		self.controller = None
 		self.controller_thread = None
 		self.thread_running = False
-		self.database = "black-bean"
-		self.dbuser = "root"
 		self.command_queue = queue.Queue()
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
@@ -87,8 +84,10 @@ class BlackBeanSkill(MycroftSkill):
 		return array
 
 	def open_db(self):
-		return mysql.connector.connect(user=self.dbuser,
-			database=self.database)
+		return mysql.connector.connect(
+			user=self.settings.get("ir-database-user", "root"),
+			database=self.settings.get("ir-database", "black-bean")
+			)
 
 	def find_ip(self, mac_address):
 		lmac_address = mac_address.lower()
@@ -327,12 +326,12 @@ class BlackBeanSkill(MycroftSkill):
 		self.register_intent(self.compose_intent(["TV", "Controllers"]),
 			self.handle_find_controllers)
 		self.find_controllers()
-		self.controller = self.open_controller(self.controller_name)
+		name = self.settings.get("default-controller", "blackbean")
+		self.controller = self.open_controller(name)
 		if self.controller == None:
-			LOG.info("IR controller '" + self.controller_name +
-				"' unresponsive")
+			LOG.info("IR controller '" + name + "' unresponsive")
 		else:
-			LOG.info("IR controller '" + self.controller_name + "' opened")
+			LOG.info("IR controller '" + name + "' opened")
 
 	def find_controllers(self):
 		dbh = self.open_db()
