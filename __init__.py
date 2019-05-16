@@ -335,9 +335,9 @@ class BlackBeanSkill(MycroftSkill):
 		self.controller_thread.start()
 		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
-		self.add_command(["TV", "Channel", "Up"], "TV:CH+", "bean.ok")
-		self.add_command(["TV", "Channel", "Down"], "TV:CH-", "bean.ok")
-		self.add_command(["TV", "Channel", "#DIGITS"], "TV:CHAN", "bean.ok")
+		self.add_command(["Channel", "Up"], "TV:CH+", "bean.ok")
+		self.add_command(["Channel", "Down"], "TV:CH-", "bean.ok")
+		self.add_command(["Channel", "#DIGITS"], "TV:CHAN", "bean.ok")
 		self.add_command(["TV", "Volume", "Up", "#REP"],
 			"TV:VOL+", "bean.ok")
 		self.add_command(["TV", "Volume", "Down", "#REP"],
