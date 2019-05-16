@@ -333,25 +333,34 @@ class BlackBeanSkill(MycroftSkill):
 		else:
 			LOG.info("IR controller '" + name + "' opened")
 
+	def update_controller_ipaddr(self, cursor, cname, ip):
+		query = "update controllers set ip_addr='" + ip + "'" + \
+			" where (name='" + cname + "')"
+		cursor.execute(query)
+
 	def find_controllers(self):
 		dbh = self.open_db()
 		c = dbh.cursor()
 		c.execute("select name, mac_addr from controllers")
 		rows = c.fetchall()
-		dbh.close()
 		for row in rows:
 			name = str(row[0])
 			mac = str(row[1])
 			ip = self.find_ip(mac)
 			if ip == None:
-				ip = "<unknown IP>"
+				ip_display = "<unknown IP>"
+			else:
+				ip_display = ip
 			controller = self.open_controller(name)
 			if controller == None:
 				status = "not ready"
 			else:
+				if ip != None:
+					self.update_controller_ipaddr(c, name, ip)
 				status = "ready"
 			LOG.info("IR controller '" + name + "' at " +
-				ip + ": " + status)
+				ip_display + ": " + status)
+		dbh.close()
 
 	def handle_find_controllers(self, message):
 		self.find_controllers()
