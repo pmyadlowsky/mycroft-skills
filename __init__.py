@@ -92,7 +92,7 @@ class BlackBeanSkill(MycroftSkill):
 
 	def find_ip(self, mac_address):
 		lmac_address = mac_address.lower()
-		pipe = os.popen("arp -na")
+		pipe = os.popen("/usr/sbin/arp -na")
 		ip_address = None
 		for line in pipe.read().split("\n"):
 			match = re.search("\\(([^\\)]+)\\) at ([0-9a-f:]+)", line)
@@ -103,7 +103,7 @@ class BlackBeanSkill(MycroftSkill):
 		return ip_address
 
 	def open_controller(self, name):
-		# open Black Bean IR controller
+		# open IR controller
 		dbh = self.open_db()
 		c = dbh.cursor()
 		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
@@ -118,18 +118,15 @@ class BlackBeanSkill(MycroftSkill):
 		ip_addr = self.find_ip(mac_addr)
 		if ip_addr == None:
 			ip_addr = str(data[0])
-		else:
-			LOG.info("discovered controller '" + name +
-				"' IP address: " + ip_addr)
+			LOG.info("couldn't discover controller '" + name +
+				"' IP address, fall back to database setting " + ip_addr)
 		port = int(data[1])
 		dev = int(data[3])
 		mac_bytes = self.mac_array(str(data[2]))
 		controller = broadlink.rm((ip_addr, port), mac_bytes, dev)
 		try:
 			controller.auth()
-			LOG.info("controller '" + name + "' opened")
 		except:
-			LOG.info("controller '" + name + "' unresponsive")
 			controller = None
 		return controller
 
@@ -327,8 +324,40 @@ class BlackBeanSkill(MycroftSkill):
 			"TV:VOL+", "bean.ok")
 		self.add_command(["TV", "Volume", "Down", "#REP"],
 			"TV:VOL-", "bean.ok")
+		self.register_intent(self.compose_intent(["TV", "Controllers"]),
+			self.handle_find_controllers)
+		self.find_controllers()
 		self.controller = self.open_controller(self.controller_name)
+		if self.controller == None:
+			LOG.info("IR controller '" + self.controller_name +
+				"' unresponsive")
+		else:
+			LOG.info("IR controller '" + self.controller_name + "' opened")
 
+	def find_controllers(self):
+		dbh = self.open_db()
+		c = dbh.cursor()
+		c.execute("select name, mac_addr from controllers")
+		rows = c.fetchall()
+		dbh.close()
+		for row in rows:
+			name = str(row[0])
+			mac = str(row[1])
+			ip = self.find_ip(mac)
+			if ip == None:
+				ip = "<unknown IP>"
+			controller = self.open_controller(name)
+			if controller == None:
+				status = "not ready"
+			else:
+				status = "ready"
+			LOG.info("IR controller '" + name + "' at " +
+				ip + ": " + status)
+
+	def handle_find_controllers(self, message):
+		self.find_controllers()
+		self.speak_dialog("bean.ok")
+		
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
 def create_skill():
