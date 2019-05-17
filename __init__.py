@@ -48,7 +48,9 @@ class BlackBeanSkill(MycroftSkill):
 		super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
 		self.controller = None
 		self.controller_thread = None
-		self.thread_running = False
+		self.scan_thread = None
+		self.scanning = False
+		self.controller_thread_running = False
 		self.command_queue = queue.Queue()
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
@@ -70,9 +72,10 @@ class BlackBeanSkill(MycroftSkill):
     # it.
     #
 	def stop(self):
-		if self.thread_running:
-			self.thread_running = False
+		if self.controller_thread_running:
+			self.controller_thread_running = False
 			self.controller_thread.join()
+		self.stop_scan_thread()
 		return True
 
 	def probe_net(self):
@@ -230,7 +233,8 @@ class BlackBeanSkill(MycroftSkill):
 				time.sleep(msec / 1000.0)
 			else:
 				decoded = binascii.a2b_hex(cmd)
-				self.command_queue.put(decoded)
+				self.controller.send_data(decoded)
+#				self.command_queue.put(decoded)
 
 	def pruned_message(self, msg_obj, verb_keys):
 		# remove known verbs found in utterance, returning
@@ -316,23 +320,40 @@ class BlackBeanSkill(MycroftSkill):
 
 	def process_commands(self):
 		LOG.info("ENTER COMMAND THREAD")
-		self.thread_running = True
-		while self.thread_running:
+		self.controller_thread_running = True
+		while self.controller_thread_running:
 			while not self.command_queue.empty():
 				code = self.command_queue.get()
 				if self.controller != None:
 					LOG.info("send " + str(len(code)) + " bytes")
-					self.controller.send_data(code)
-			if self.thread_running:
+					try:
+						self.controller.send_data(code)
+					except:
+						LOG.info("SEND FAILED")
+			if self.controller_thread_running:
 				time.sleep(1.0)
+			else:
+				LOG.info("STOP COMMAND THREAD")
 		LOG.info("EXIT COMMAND THREAD")
+
+	def channel_scanner(self, command):
+		interval = int(self.settings.get("scan-interval", "10"))
+		LOG.info("SCAN INTERVAL " + str(interval))
+		self.scanning = True
+		while self.scanning:
+			LOG.info("SCAN " + command)
+			self.send_command(command)
+			for i in range(interval):
+				time.sleep(1.0)
+				if not self.scanning:
+					break
 
 	def initialize(self):
 		# compose verbal command grammar and command responses
 		self.probe_net()
-		self.controller_thread = \
-			threading.Thread(None, self.process_commands)
-		self.controller_thread.start()
+#		self.controller_thread = \
+#			threading.Thread(None, self.process_commands)
+#		self.controller_thread.start()
 		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
 		self.add_command(["Channel", "Up"], "TV:CH+", "bean.ok")
@@ -344,6 +365,14 @@ class BlackBeanSkill(MycroftSkill):
 			"TV:VOL-", "bean.ok")
 		self.register_intent(self.compose_intent(["TV", "Controllers"]),
 			self.handle_find_controllers)
+		self.register_intent(
+			self.compose_intent(["Scan", "Channel", "Up"]),
+			self.handle_start_scan_forward)
+		self.register_intent(
+			self.compose_intent(["Scan", "Channel", "Down"]),
+			self.handle_start_scan_back)
+		self.register_intent(self.compose_intent(["Stop", "Scan"]),
+			self.handle_stop_scan)
 		self.find_controllers()
 		name = self.settings.get("default-controller", "blackbean")
 		self.controller = self.open_controller(name)
@@ -384,6 +413,32 @@ class BlackBeanSkill(MycroftSkill):
 	def handle_find_controllers(self, message):
 		self.find_controllers()
 		self.speak_dialog("bean.ok")
+
+	def stop_scan_thread(self):
+		if self.scanning:
+			self.scanning = False
+#			self.scan_thread.join()
+
+	def handle_start_scan_forward(self, message):
+		self.stop_scan_thread()
+		self.scan_thread = threading.Thread(
+			target=self.channel_scanner, args=("TV:CH+",))
+		self.scan_thread.start()
+		self.speak_dialog("begin.scanning")
+		return
+
+	def handle_start_scan_back(self, message):
+		self.stop_scan_thread()
+		self.scan_thread = threading.Thread(
+			target=self.channel_scanner, args=("TV:CH-",))
+		self.scan_thread.start()
+		self.speak_dialog("begin.scanning")
+		return
+
+	def handle_stop_scan(self, message):
+		self.stop_scan_thread()
+		self.speak_dialog("stop.scanning")
+		return
 		
 # The "create_skill()" method is used to create an instance of the skill.
 # Note that it's outside the class itself.
