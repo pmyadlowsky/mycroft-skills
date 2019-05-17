@@ -359,15 +359,16 @@ class BlackBeanSkill(MycroftSkill):
 			self.controller_thread = \
 				threading.Thread(None, self.process_commands)
 			self.controller_thread.start()
-		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
-		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
-		self.add_command(["Channel", "Up"], "TV:CH+", "bean.ok")
-		self.add_command(["Channel", "Down"], "TV:CH-", "bean.ok")
-		self.add_command(["Channel", "#DIGITS"], "TV:CHAN", "bean.ok")
+		self.add_command(["TV", "Power"], "TV:PWR", "power.toggle")
+		self.add_command(["TV", "Mute"], "TV:MUTE", "mute.toggle")
+		self.add_command(["Channel", "Up"], "TV:CH+", "next.channel")
+		self.add_command(["Channel", "Down"], "TV:CH-", "previous.channel")
+		self.add_command(["Channel", "#DIGITS"],
+			"TV:CHAN", "change.channel")
 		self.add_command(["TV", "Volume", "Up", "#REP"],
-			"TV:VOL+", "bean.ok")
+			"TV:VOL+", "volume.up")
 		self.add_command(["TV", "Volume", "Down", "#REP"],
-			"TV:VOL-", "bean.ok")
+			"TV:VOL-", "volume.down")
 		self.register_intent(self.compose_intent(["TV", "Controllers"]),
 			self.handle_find_controllers)
 		self.register_intent(
@@ -417,7 +418,7 @@ class BlackBeanSkill(MycroftSkill):
 
 	def handle_find_controllers(self, message):
 		self.find_controllers()
-		self.speak_dialog("bean.ok")
+		self.speak_dialog("scan.controllers")
 
 	def stop_scan_thread(self):
 		if self.scanning:
