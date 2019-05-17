@@ -47,6 +47,7 @@ class BlackBeanSkill(MycroftSkill):
 	def __init__(self):
 		super(BlackBeanSkill, self).__init__(name="BlackBeanSkill")
 		self.controller = None
+		self.use_command_thread = True
 		self.controller_thread = None
 		self.scan_thread = None
 		self.scanning = False
@@ -233,8 +234,10 @@ class BlackBeanSkill(MycroftSkill):
 				time.sleep(msec / 1000.0)
 			else:
 				decoded = binascii.a2b_hex(cmd)
-				self.controller.send_data(decoded)
-#				self.command_queue.put(decoded)
+				if self.use_command_thread:
+					self.command_queue.put(decoded)
+				else:
+					self.controller.send_data(decoded)
 
 	def pruned_message(self, msg_obj, verb_keys):
 		# remove known verbs found in utterance, returning
@@ -322,19 +325,18 @@ class BlackBeanSkill(MycroftSkill):
 		LOG.info("ENTER COMMAND THREAD")
 		self.controller_thread_running = True
 		while self.controller_thread_running:
-			while not self.command_queue.empty():
-				code = self.command_queue.get()
+			try:
+				code = self.command_queue.get(timeout=2.0)
 				if self.controller != None:
 					LOG.info("send " + str(len(code)) + " bytes")
-					try:
-						self.controller.send_data(code)
-					except:
-						LOG.info("SEND FAILED")
-			if self.controller_thread_running:
-				time.sleep(1.0)
-			else:
-				LOG.info("STOP COMMAND THREAD")
+					self.controller.send_data(code)
+			except queue.Empty:
+				continue
+			except:
+				LOG.info("PROCESS LOOP FAILED")
+				break
 		LOG.info("EXIT COMMAND THREAD")
+		return
 
 	def channel_scanner(self, command):
 		interval = int(self.settings.get("scan-interval", "10"))
@@ -347,13 +349,16 @@ class BlackBeanSkill(MycroftSkill):
 				time.sleep(1.0)
 				if not self.scanning:
 					break
+		LOG.info("SCANNER STOPPED")
+		return
 
 	def initialize(self):
 		# compose verbal command grammar and command responses
 		self.probe_net()
-#		self.controller_thread = \
-#			threading.Thread(None, self.process_commands)
-#		self.controller_thread.start()
+		if self.use_command_thread:
+			self.controller_thread = \
+				threading.Thread(None, self.process_commands)
+			self.controller_thread.start()
 		self.add_command(["TV", "Power"], "TV:PWR", "bean.ok")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "bean.ok")
 		self.add_command(["Channel", "Up"], "TV:CH+", "bean.ok")
@@ -417,7 +422,7 @@ class BlackBeanSkill(MycroftSkill):
 	def stop_scan_thread(self):
 		if self.scanning:
 			self.scanning = False
-#			self.scan_thread.join()
+			self.scan_thread.join()
 
 	def handle_start_scan_forward(self, message):
 		self.stop_scan_thread()
