@@ -332,8 +332,8 @@ class BlackBeanSkill(MycroftSkill):
 					self.controller.send_data(code)
 			except queue.Empty:
 				continue
-			except:
-				LOG.info("PROCESS LOOP FAILED")
+			except Exception as exc:
+				LOG.info("PROCESS LOOP FAILED: " + str(exc))
 				break
 		LOG.info("EXIT COMMAND THREAD")
 		return
