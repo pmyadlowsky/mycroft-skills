@@ -199,7 +199,7 @@ class BlackBeanSkill(MycroftSkill):
 		else:
 			return (False, 0)
 
-	def collect_command_codes(self, command, history = []):
+	def collect_command_codes(self, command, history):
 		# recursively collect IR codes from command stream
 		(delay, ms) = self.is_delay(command)
 		if delay:
@@ -210,7 +210,7 @@ class BlackBeanSkill(MycroftSkill):
 		m = re.search("^\\[([^\\]\\[]+)\\]$", code)
 		if m: # command sequence
 			if command in history: # infinite recursion
-				LOG.info("command loop detected")
+				LOG.info("command loop detected: " + command)
 				return []
 			else: # remember this command
 				history.append(command)
@@ -227,7 +227,7 @@ class BlackBeanSkill(MycroftSkill):
 		command_stream = command_list.split(",")
 		commands = []
 		for cmd in command_stream:
-			commands.extend(self.collect_command_codes(cmd))
+			commands.extend(self.collect_command_codes(cmd, []))
 		for cmd in commands:
 			(delay, msec) = self.is_delay(cmd)
 			if delay:
