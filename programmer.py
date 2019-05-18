@@ -116,6 +116,9 @@ def learn(controller, timeout):
 		encoded = to_hex(learned)
 	return encoded
 
+def command_seq(commands):
+	return "[" + ",".join(commands) + "]"
+
 def test_controller(timeout):
 	print("point and shoot...")
 	controller = open_controller("blackbean")
@@ -127,8 +130,6 @@ signal.signal(signal.SIGTERM, cancel)
 
 learn_timeout = 20
 
-devices = []
-
 header("Set up devices")
 
 while True:
@@ -137,7 +138,6 @@ while True:
 	prompt("Devices " + ", ".join(devices) + ": correct?")
 	if yesno():
 		break
-
 
 header("Set up device commands")
 
@@ -154,7 +154,7 @@ for device in devices:
 			break
 
 controller = open_controller("blackbean")
-commands = {}
+command_db = {}
 
 header("Get ready to learn (hit Enter)...")
 sys.stdin.readline()
@@ -165,12 +165,42 @@ for device in devices:
 			prompt("Learn " + device + ":" + command)
 			ir_code = learn(controller, learn_timeout)
 			if ir_code == None:
-				sys.stdout.write(" failed\n")
+				sys.stdout.write("failed\n")
 				continue
 			else:
-				commands[device + ":" + command] = ir_code
-				sys.stdout.write(" got it\n")
+				command_db[device + ":" + command] = ir_code
+				sys.stdout.write("got it\n")
 				break
+
+print("\nDevice IR programming done.")
+header("Set up device groups")
+
+while True:
+	prompt("List of device groups:")
+	device_groups = get_list("[^\\w]")
+	prompt("Device groups " + ", ".join(device_groups) + ": correct?")
+	if yesno():
+		break
+
+header("Set up device group commands")
+
+group_command_set = {}
+
+for device in device_groups:
+	while True:
+		prompt("List commands for device group '" + device + "':")
+		commands = get_list("[, ]")
+		prompt("Commands for '" + device + "': " +
+			", ".join(commands) + ": correct?")
+		if yesno():
+			command_set[device] = commands
+			break
+
+for device in device_groups:
+	for command in command_set[device]:
+		prompt("Command sequence for " + device + ":" + command)
+		cmds = get_list("[, ]")
+		command_db[device + ":" + command] = command_seq(cmds)
 
 header("Building database...")
 
@@ -179,15 +209,19 @@ c = dbh.cursor()
 c.execute("delete from devices")
 c.execute("delete from commands")
 
-for device in devices:
+print("DEVICES: " + str(devices + device_groups))
+print("COMMANDS: " + str(command_db))
+
+for device in devices + device_groups:
+	print("STORE " + device)
 	c.execute("insert into devices (name) values ('" + device + "')")
 	dev_id = c.lastrowid
 	print(device + "(" + str(dev_id) + "):")
 	for command in command_set[device]:
 		key = device + ":" + command
 		c.execute("""insert into commands (device, command, code)
-			values (%d, '%s', '%s')""" % (dev_id, command, commands[key]))
-		print("\t" + command + ": " + commands[key])
+			values (%d, '%s', '%s')""" % (dev_id, command, command_db[key]))
+		print("\t" + command + ": " + str(command_db[key]))
 
 dbh.commit()
 c.close()
