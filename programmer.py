@@ -214,14 +214,14 @@ if build_db:
 	c = dbh.cursor()
 	for device in devices + device_groups:
 		dev_id = get_device_id(device, c)
-		if dev_id != None:
-			did = str(dev_id)
-			c.execute("delete from commands where (device=" + did + ")")
-			c.execute("delete from devices where (id=" + did + ")")
-		c.execute("insert into devices (name) values ('" + device + "')")
-		dev_id = c.lastrowid
+		if dev_id == None:
+			c.execute("insert into devices (name) values ('" +
+				device + "')")
+			dev_id = c.lastrowid
 		print("\n" + device + "(" + str(dev_id) + "):")
 		for command in command_set[device]:
+			c.execute("delete from commands where (device=" +
+				str(dev_id) + ") and (command='" + command + "')")
 			key = device + ":" + command
 			c.execute("""insert into commands (device, command, code)
 				values (%d, '%s', '%s')""" %
