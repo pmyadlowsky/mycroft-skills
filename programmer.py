@@ -138,13 +138,21 @@ signal.signal(signal.SIGTERM, cancel)
 
 learn_timeout = 20
 
-header("Set up devices")
+header("Set up devices/groups")
 
 while True:
-	prompt("List of devices:")
-	devices = get_list("[^\\w]")
-	prompt("Devices " + ", ".join(devices) + ": correct?")
+	prompt("List of devices ('@' marks device group):")
+	items = get_list("[^\\w@]")
+	prompt("Devices " + ", ".join(items) + ": correct?")
 	if yesno():
+		devices = []
+		device_groups = []
+		for item in items:
+			match = re.search("^@(.+)", item)
+			if match:
+				device_groups.append(match.group(1))
+			else:
+				devices.append(item)
 		break
 
 header("Set up device commands")
@@ -181,14 +189,6 @@ for device in devices:
 				break
 
 print("\nDevice IR programming done.")
-header("Set up device groups")
-
-while True:
-	prompt("List of device groups:")
-	device_groups = get_list("[^\\w]")
-	prompt("Device groups " + ", ".join(device_groups) + ": correct?")
-	if yesno():
-		break
 
 header("Set up device group commands")
 
