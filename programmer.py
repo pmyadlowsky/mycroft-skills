@@ -37,7 +37,7 @@ def get_list(pat):
 		return items
 
 def header(text):
-	print("---------------------")
+	print("\n---------------------")
 	print(text + "...\n")
 
 def cancel(signum, frame):
@@ -156,7 +156,6 @@ for device in devices:
 controller = open_controller("blackbean")
 commands = {}
 
-print("")
 header("Get ready to learn (hit Enter)...")
 sys.stdin.readline()
 
@@ -173,4 +172,25 @@ for device in devices:
 				sys.stdout.write(" got it\n")
 				break
 
-print(str(commands))
+header("Building database...")
+
+dbh = open_db()
+c = dbh.cursor()
+c.execute("delete from devices")
+c.execute("delete from commands")
+
+for device in devices:
+	c.execute("insert into devices (name) values ('" + device + "')")
+	dev_id = c.lastrowid
+	print(device + "(" + str(dev_id) + "):")
+	for command in command_set[device]:
+		key = device + ":" + command
+		c.execute("""insert into commands (device, command, code)
+			values (%d, '%s', '%s')""" % (dev_id, command, commands[key]))
+		print("\t" + command + ": " + commands[key])
+
+dbh.commit()
+c.close()
+dbh.close()
+
+header("Done.")
