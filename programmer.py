@@ -127,6 +127,30 @@ def get_device_id(device, cursor):
 	else:
 		return int(data[0])
 
+def learn_device(device, commands, controller, timeout):
+	db = {}
+	for command in commands:
+		while True:
+			prompt("Learn " + device + ":" + command)
+			ir_code = learn(controller, timeout)
+			if ir_code == None:
+				sys.stdout.write("failed\n")
+				continue
+			else:
+				db[device + ":" + command] = ir_code
+				sys.stdout.write("got it\n")
+				break
+	return db
+
+def get_command_list(device):
+	while True:
+		prompt("List commands for device/group '" + device + "':")
+		commands = get_list("[, ]")
+		prompt("Commands for '" + device + "': " +
+			", ".join(commands) + ": correct?")
+		if yesno():
+			return commands
+
 def test_controller(timeout):
 	print("point and shoot...")
 	controller = open_controller("blackbean")
@@ -155,83 +179,56 @@ while True:
 				devices.append(item)
 		break
 
-header("Set up device commands")
-
 command_set = {}
-
-for device in devices:
-	while True:
-		prompt("List commands for device '" + device + "':")
-		commands = get_list("[, ]")
-		prompt("Commands for '" + device + "': " +
-			", ".join(commands) + ": correct?")
-		if yesno():
-			command_set[device] = commands
-			break
-
-controller = open_controller("blackbean")
 command_db = {}
+build_db = False
 
-header("Get ready to learn (hit Enter)...")
-sys.stdin.readline()
+if len(devices) > 0:
+	build_db = True
+	header("Set up device commands")
+	for device in devices:
+		command_set[device] = get_command_list(device)
+	controller = open_controller("blackbean")
+	header("Aim remote at IR receiver (hit Enter when ready)...")
+	sys.stdin.readline()
+	for device in devices:
+		db = learn_device(device, command_set[device],
+					controller, learn_timeout)
+		command_db.update(db)
+	print("\nDevice IR programming done.")
 
-for device in devices:
-	for command in command_set[device]:
-		while True:
-			prompt("Learn " + device + ":" + command)
-			ir_code = learn(controller, learn_timeout)
-			if ir_code == None:
-				sys.stdout.write("failed\n")
-				continue
-			else:
-				command_db[device + ":" + command] = ir_code
-				sys.stdout.write("got it\n")
-				break
+if len(device_groups) > 0:
+	build_db = True
+	header("Set up device group commands")
+	for device in device_groups:
+		command_set[device] = get_command_list(device)
+	for device in device_groups:
+		for command in command_set[device]:
+			prompt("Command sequence for " + device + ":" + command)
+			cmds = get_list("[, ]")
+			command_db[device + ":" + command] = command_seq(cmds)
 
-print("\nDevice IR programming done.")
-
-header("Set up device group commands")
-
-group_command_set = {}
-
-for device in device_groups:
-	while True:
-		prompt("List commands for device group '" + device + "':")
-		commands = get_list("[, ]")
-		prompt("Commands for '" + device + "': " +
-			", ".join(commands) + ": correct?")
-		if yesno():
-			command_set[device] = commands
-			break
-
-for device in device_groups:
-	for command in command_set[device]:
-		prompt("Command sequence for " + device + ":" + command)
-		cmds = get_list("[, ]")
-		command_db[device + ":" + command] = command_seq(cmds)
-
-header("Building database...")
-
-dbh = open_db()
-c = dbh.cursor()
-
-for device in devices + device_groups:
-	dev_id = get_device_id(device, c)
-	if dev_id != None:
-		did = str(dev_id)
-		c.execute("delete from commands where (device=" + did + ")")
-		c.execute("delete from devices where (id=" + did + ")")
-	c.execute("insert into devices (name) values ('" + device + "')")
-	dev_id = c.lastrowid
-	print(device + "(" + str(dev_id) + "):")
-	for command in command_set[device]:
-		key = device + ":" + command
-		c.execute("""insert into commands (device, command, code)
-			values (%d, '%s', '%s')""" % (dev_id, command, command_db[key]))
-		print("\t" + command + ": " + str(command_db[key]))
-
-dbh.commit()
-c.close()
-dbh.close()
+if build_db:
+	header("Building database...")
+	dbh = open_db()
+	c = dbh.cursor()
+	for device in devices + device_groups:
+		dev_id = get_device_id(device, c)
+		if dev_id != None:
+			did = str(dev_id)
+			c.execute("delete from commands where (device=" + did + ")")
+			c.execute("delete from devices where (id=" + did + ")")
+		c.execute("insert into devices (name) values ('" + device + "')")
+		dev_id = c.lastrowid
+		print("\n" + device + "(" + str(dev_id) + "):")
+		for command in command_set[device]:
+			key = device + ":" + command
+			c.execute("""insert into commands (device, command, code)
+				values (%d, '%s', '%s')""" %
+					(dev_id, command, command_db[key]))
+			print("\t" + command + ": " + str(command_db[key]))
+	dbh.commit()
+	c.close()
+	dbh.close()
 
 header("Done.")
