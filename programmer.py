@@ -119,6 +119,14 @@ def learn(controller, timeout):
 def command_seq(commands):
 	return "[" + ",".join(commands) + "]"
 
+def get_device_id(device, cursor):
+	cursor.execute("select id from devices where name='%s'" % device)
+	data = cursor.fetchone()
+	if data == None:
+		return None
+	else:
+		return int(data[0])
+
 def test_controller(timeout):
 	print("point and shoot...")
 	controller = open_controller("blackbean")
@@ -206,14 +214,13 @@ header("Building database...")
 
 dbh = open_db()
 c = dbh.cursor()
-c.execute("delete from devices")
-c.execute("delete from commands")
-
-print("DEVICES: " + str(devices + device_groups))
-print("COMMANDS: " + str(command_db))
 
 for device in devices + device_groups:
-	print("STORE " + device)
+	dev_id = get_device_id(device, c)
+	if dev_id != None:
+		did = str(dev_id)
+		c.execute("delete from commands where (device=" + did + ")")
+		c.execute("delete from devices where (id=" + did + ")")
 	c.execute("insert into devices (name) values ('" + device + "')")
 	dev_id = c.lastrowid
 	print(device + "(" + str(dev_id) + "):")
