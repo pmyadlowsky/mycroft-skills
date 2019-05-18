@@ -1,5 +1,9 @@
 #! /usr/bin/python3
 
+# This utility constructs a database of devices and commands,
+# then uses an IR controller to collect IR codes to be associated
+# with their respective device commands.
+
 import sys
 import re
 import broadlink
@@ -73,13 +77,13 @@ def open_controller(name):
 	data = c.fetchone()
 	dbh.close()
 	if data == None:
-		LOG.info("no such controller '" + name + "'")
+		print("no such controller '" + name + "'")
 		return None
 	mac_addr = str(data[2])
 	ip_addr = find_ip(mac_addr)
 	if ip_addr == None:
 		ip_addr = str(data[0])
-		LOG.info("couldn't discover controller '" + name +
+		print("couldn't discover controller '" + name +
 			"' IP address, fall back to database setting " + ip_addr)
 	port = int(data[1])
 	dev = int(data[3])
@@ -158,12 +162,15 @@ sys.stdin.readline()
 
 for device in devices:
 	for command in command_set[device]:
-		prompt("Learn " + device + ":" + command)
-		ir_code = learn(controller, learn_timeout)
-		if ir_code == None:
-			sys.stdout.write(" failed\n")
-		else:
-			commands[device + ":" + command] = ir_code
-			sys.stdout.write(" success\n")
+		while True:
+			prompt("Learn " + device + ":" + command)
+			ir_code = learn(controller, learn_timeout)
+			if ir_code == None:
+				sys.stdout.write(" failed\n")
+				continue
+			else:
+				commands[device + ":" + command] = ir_code
+				sys.stdout.write(" got it\n")
+				break
 
 print(str(commands))
