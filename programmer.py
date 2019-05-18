@@ -142,6 +142,20 @@ def learn_device(device, commands, controller, timeout):
 				break
 	return db
 
+def validate_command(device_cmd, cursor):
+	try:
+		(device, cmd) = device_cmd.split(":")
+	except:
+		print("invalid DEV:CMD command")
+		return False
+	cursor.execute("""select commands.id as id
+		from commands, devices
+		where (devices.name='%s')
+		and (commands.command='%s')
+		and (commands.device=devices.id)""" % (device, cmd))
+	data = cursor.fetchone()
+	return (data != None)
+	
 def get_command_list(device):
 	while True:
 		prompt("List commands for device/group '" + device + "':")
@@ -202,11 +216,21 @@ if len(device_groups) > 0:
 	header("Set up device group commands")
 	for device in device_groups:
 		command_set[device] = get_command_list(device)
+	dbh = open_db()
+	c = dbh.cursor()
 	for device in device_groups:
 		for command in command_set[device]:
 			prompt("Command sequence for " + device + ":" + command)
 			cmds = get_list("[, ]")
-			command_db[device + ":" + command] = command_seq(cmds)
+			valid = True
+			for cmd in cmds:
+				if not validate_command(cmd, c):
+					valid = False
+					break
+			if valid:
+				command_db[device + ":" + command] = command_seq(cmds)
+	c.close()
+	dbh.close()
 
 if build_db:
 	header("Building database...")
