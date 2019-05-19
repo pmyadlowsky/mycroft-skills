@@ -170,6 +170,14 @@ def get_command_list(device):
 		if yesno():
 			return commands
 
+def dump_controller(obj):
+	print("Controller '" + obj['name'] + "':")
+	print("\tIP address:  " + obj['ip_addr'])
+	print("\tMAC address: " + obj['mac_addr'])
+	print("\tIP port:     " + str(obj['port']))
+	print("\ttimeout:     " + str(obj['timeout']))
+	print("\tdevice type: " + str(obj['device_type']))
+
 def test_controller(timeout):
 	print("point and shoot...")
 	controller = open_controller("blackbean")
@@ -202,17 +210,22 @@ while True:
 
 if len(controllers) > 0:
 	for controller in controllers:
-		print("Configure " + controller['name'] + "...")
-		prompt("\tIP address:")
-		controller['ip_addr'] = sys.stdin.readline().strip()
-		prompt("\tMAC address:")
-		controller['mac_addr'] = sys.stdin.readline().strip()
-		prompt("\tIP port:")
-		controller['port'] = int(sys.stdin.readline().strip())
-		prompt("\ttimeout:")
-		controller['timeout'] = int(sys.stdin.readline().strip())
-		prompt("\tdevice type:")
-		controller['device_type'] = int(sys.stdin.readline().strip())
+		while True:
+			print("Configure controller '" + controller['name'] + "'...")
+			prompt("\tIP address:")
+			controller['ip_addr'] = sys.stdin.readline().strip()
+			prompt("\tMAC address:")
+			controller['mac_addr'] = sys.stdin.readline().strip()
+			prompt("\tIP port:")
+			controller['port'] = int(sys.stdin.readline().strip())
+			prompt("\ttimeout:")
+			controller['timeout'] = int(sys.stdin.readline().strip())
+			prompt("\tdevice type:")
+			controller['device_type'] = int(sys.stdin.readline().strip())
+			dump_controller(controller)
+			prompt("configuration correct?")
+			if yesno():
+				break
 
 print(str(controllers))
 sys.exit(0)
