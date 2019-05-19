@@ -8,7 +8,7 @@ import sys
 import re
 import broadlink
 import signal
-import mysql.connector
+import sqlite3
 import os
 import time
 
@@ -46,8 +46,34 @@ def cancel(signum, frame):
 	print("\ncancelled")
 	sys.exit(0)
 
+def init_db(dbh):
+	file = open("schema.sqlite3")
+	sql = file.read()
+	file.close()
+	c = dbh.cursor()
+	c.executescript(sql)
+	c.close()
+
 def open_db():
-	return mysql.connector.connect(user="root", database="black-bean")
+	path = "/home/mycroft/.mycroft/skills/BlackBeanSkill/config.db"
+	dbh = sqlite3.connect(path)
+	c = dbh.cursor()
+	try:
+		c.execute("select count(*) from controllers")
+		c.execute("select count(*) from devices")
+		c.execute("select count(*) from commands")
+		c.close()
+	except sqlite3.OperationalError:
+		print("initialize database at ", path)
+		c.close()
+		init_db(dbh)
+		dbh.close()
+		return open_db()
+	except:
+		print("unexpected error: ", sys.exc_info()[0])
+		dbh.close()
+		return None
+	return dbh
 
 def find_ip(mac_address):
 	lmac_address = mac_address.lower()
