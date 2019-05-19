@@ -1,0 +1,21 @@
+CREATE TABLE commands (
+	id integer primary key,
+	device integer,
+	command text,
+	code text
+);
+CREATE TABLE controllers (
+	id integer primary key,
+	name text,
+	ip_addr text,
+	mac_addr text,
+	port integer,
+	timeout integer,
+	device_type integer
+);
+CREATE TABLE devices (
+	id integer primary key,
+	name text,
+	make text,
+	model text
+);
