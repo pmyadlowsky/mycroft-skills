@@ -130,8 +130,17 @@ def get_device_id(device, cursor):
 	else:
 		return int(data[0])
 
+def get_controller_id(controller, cursor):
+	cursor.execute("""select id from controllers
+		where name='%s'""" % controller['name'])
+	data = cursor.fetchone()
+	if data == None:
+		return None
+	else:
+		return int(data[0])
+
 def learn_device(device, commands, controller, timeout):
-	db = {}
+	db = None
 	for command in commands:
 		while True:
 			prompt("Learn " + device + ":" + command)
@@ -140,6 +149,8 @@ def learn_device(device, commands, controller, timeout):
 				sys.stdout.write("failed\n")
 				continue
 			else:
+				if db == None:
+					db = {}
 				db[device + ":" + command] = ir_code
 				sys.stdout.write("got it\n")
 				break
@@ -177,6 +188,24 @@ def dump_controller(obj):
 	print("\tIP port:     " + str(obj['port']))
 	print("\ttimeout:     " + str(obj['timeout']))
 	print("\tdevice type: " + str(obj['device_type']))
+
+def save_controller(cursor, controller):
+	con_id = get_controller_id(controller, cursor)
+	if con_id == None:
+		c.execute("insert into controllers (name) values ('" +
+			controller['name'] + "')")
+		con_id = c.lastrowid
+	cursor.execute("""update controllers set
+			ip_addr='%s',
+			mac_addr='%s',
+			port=%d,
+			timeout=%d,
+			device_type=%d
+			where id=%d""" % (controller['ip_addr'],
+				controller['mac_addr'], 
+				int(controller['port']),
+				int(controller['timeout']),
+				int(controller['device_type']), con_id))
 
 def test_controller(timeout):
 	print("point and shoot...")
@@ -225,10 +254,8 @@ if len(controllers) > 0:
 			dump_controller(controller)
 			prompt("configuration correct?")
 			if yesno():
+				build_db = True
 				break
-
-print(str(controllers))
-sys.exit(0)
 
 header("Set up devices/groups")
 
@@ -248,7 +275,6 @@ while True:
 		break
 
 if len(devices) > 0:
-	build_db = True
 	header("Set up device commands")
 	for device in devices:
 		command_set[device] = get_command_list(device)
@@ -258,11 +284,12 @@ if len(devices) > 0:
 	for device in devices:
 		db = learn_device(device, command_set[device],
 					controller, learn_timeout)
-		command_db.update(db)
+		if db != None:
+			build_db = True
+			command_db.update(db)
 	print("\nDevice IR programming done.")
 
 if len(device_groups) > 0:
-	build_db = True
 	header("Set up device group commands")
 	for device in device_groups:
 		command_set[device] = get_command_list(device)
@@ -278,6 +305,7 @@ if len(device_groups) > 0:
 					valid = False
 					break
 			if valid:
+				build_db = True
 				command_db[device + ":" + command] = command_seq(cmds)
 	c.close()
 	dbh.close()
@@ -301,6 +329,8 @@ if build_db:
 				values (%d, '%s', '%s')""" %
 					(dev_id, command, command_db[key]))
 			print("\t" + command + ": " + str(command_db[key]))
+	for controller in controllers:
+		save_controller(c, controller)
 	dbh.commit()
 	c.close()
 	dbh.close()
