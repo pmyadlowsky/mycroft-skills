@@ -27,6 +27,8 @@ LOGGER = getLogger(__name__)
 Digits = {
 	'one': 1,
 	'two': 2,
+	'to': 2,
+	'too': 2,
 	'three': 3,
 	'four': 4,
 	'for': 4,
@@ -371,8 +373,10 @@ class BlackBeanSkill(MycroftSkill):
 			self.controller_thread.start()
 		self.add_command(["TV", "Power"], "TV:PWR", "power.toggle")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "mute.toggle")
-		self.add_command(["Channel", "Up"], "TV:CH+", "next.channel")
-		self.add_command(["Channel", "Down"], "TV:CH-", "previous.channel")
+		self.add_command(["Channel", "Up", "#REP"],
+			"TV:CH+", "next.channel")
+		self.add_command(["Channel", "Down", "#REP"],
+			"TV:CH-", "previous.channel")
 		self.add_command(["Channel", "#DIGITS"],
 			"TV:CHAN", "change.channel")
 		self.add_command(["TV", "Volume", "Up", "#REP"],
