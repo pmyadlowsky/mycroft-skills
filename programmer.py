@@ -24,13 +24,15 @@ def yesno():
 def upcase(str):
 	return str.upper()
 
-def get_list(pat):
+def get_list(pat, force_upcase = True):
 	while True:
 		line = sys.stdin.readline().strip()
 		if len(line) == 0:
-			print("Please provide at least one item, or cancel out.")
-			continue
-		items = list(map(upcase, re.split(pat, line)))
+			return []
+		if force_upcase:
+			items = list(map(upcase, re.split(pat, line)))
+		else:
+			items = re.split(pat, line)
 		if len(items) == 0:
 			print("Please provide at least one items, or cancel out.")
 			continue
@@ -75,6 +77,7 @@ def open_controller(name):
 			from controllers
 			where (name='%s')""" % name)
 	data = c.fetchone()
+	c.close()
 	dbh.close()
 	if data == None:
 		print("no such controller '" + name + "'")
@@ -160,6 +163,8 @@ def get_command_list(device):
 	while True:
 		prompt("List commands for device/group '" + device + "':")
 		commands = get_list("[, ]")
+		if len(commands) == 0:
+			return []
 		prompt("Commands for '" + device + "': " +
 			", ".join(commands) + ": correct?")
 		if yesno():
@@ -175,16 +180,52 @@ signal.signal(signal.SIGINT, cancel)
 signal.signal(signal.SIGTERM, cancel)
 
 learn_timeout = 20
+command_set = {}
+command_db = {}
+devices = []
+device_groups = []
+controllers = []
+build_db = False
+
+header("Set up controllers")
+
+while True:
+	prompt("List of controllers:")
+	items = get_list("[^\\w]", force_upcase=False)
+	if len(items) == 0:
+		break
+	prompt("Controllers " + ", ".join(items) + ": correct?")
+	if yesno():
+		for item in items:
+			controllers.append({'name': item})
+		break
+
+if len(controllers) > 0:
+	for controller in controllers:
+		print("Configure " + controller['name'] + "...")
+		prompt("\tIP address:")
+		controller['ip_addr'] = sys.stdin.readline().strip()
+		prompt("\tMAC address:")
+		controller['mac_addr'] = sys.stdin.readline().strip()
+		prompt("\tIP port:")
+		controller['port'] = int(sys.stdin.readline().strip())
+		prompt("\ttimeout:")
+		controller['timeout'] = int(sys.stdin.readline().strip())
+		prompt("\tdevice type:")
+		controller['device_type'] = int(sys.stdin.readline().strip())
+
+print(str(controllers))
+sys.exit(0)
 
 header("Set up devices/groups")
 
 while True:
 	prompt("List of devices ('@' marks device group):")
 	items = get_list("[^\\w@]")
+	if len(items) == 0:
+		break
 	prompt("Devices " + ", ".join(items) + ": correct?")
 	if yesno():
-		devices = []
-		device_groups = []
 		for item in items:
 			match = re.search("^@(.+)", item)
 			if match:
@@ -192,10 +233,6 @@ while True:
 			else:
 				devices.append(item)
 		break
-
-command_set = {}
-command_db = {}
-build_db = False
 
 if len(devices) > 0:
 	build_db = True
