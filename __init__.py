@@ -20,7 +20,7 @@ import string
 import threading
 import queue
 import re
-import mysql.connector
+import sqlite3
 
 __author__ = 'pmyadlowsky'
 LOGGER = getLogger(__name__)
@@ -53,6 +53,8 @@ class BlackBeanSkill(MycroftSkill):
 		self.scanning = False
 		self.controller_thread_running = False
 		self.command_queue = queue.Queue()
+		self.skill_path = os.path.dirname(os.path.realpath(__file__))
+		self.config_path = "/".join([self.skill_path, "config.db"])
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
     # skill's intent is matched.  The intent is defined by the IntentBuilder()
@@ -106,10 +108,8 @@ class BlackBeanSkill(MycroftSkill):
 		return array
 
 	def open_db(self):
-		return mysql.connector.connect(
-			user=self.settings.get("ir-database-user", "root"),
-			database=self.settings.get("ir-database", "black-bean")
-			)
+		dbh = sqlite3.connect(self.config_path)
+		return dbh
 
 	def find_ip(self, mac_address):
 		lmac_address = mac_address.lower()
@@ -127,10 +127,18 @@ class BlackBeanSkill(MycroftSkill):
 		# open IR controller
 		dbh = self.open_db()
 		c = dbh.cursor()
-		c.execute("""select ip_addr, port, mac_addr, device_type, timeout
-				from controllers
-				where (name='%s')""" % name)
+		try:
+			c.execute("""select ip_addr, port, mac_addr,
+						device_type, timeout
+					from controllers
+					where (name='%s')""" % name)
+		except:
+			LOG.info("no controllers in config database")
+			c.close()
+			dbh.close()
+			return None
 		data = c.fetchone()
+		c.close()
 		dbh.close()
 		if data == None:
 			LOG.info("no such controller '" + name + "'")
@@ -176,6 +184,7 @@ class BlackBeanSkill(MycroftSkill):
 		dev_id = self.get_device_id(device, c)
 		if dev_id == None:
 			LOG.info("no such device '" + device + "'")
+			c.close()
 			dbh.close()
 			return None
 		c.execute("""select code
@@ -185,9 +194,11 @@ class BlackBeanSkill(MycroftSkill):
 		data = c.fetchone()
 		if data == None:
 			LOG.info("no such command for '" + device + "': '" + cmd + "'")
+			c.close()
 			dbh.close()
 			return None
 		code = str(data[0])
+		c.close()
 		dbh.close()
 		return code
 
@@ -395,7 +406,13 @@ class BlackBeanSkill(MycroftSkill):
 	def find_controllers(self):
 		dbh = self.open_db()
 		c = dbh.cursor()
-		c.execute("select name, mac_addr from controllers")
+		try:
+			c.execute("select name, mac_addr from controllers")
+		except:
+			LOG.info("can't read controllers table")
+			c.close()
+			dbh.close()
+			return
 		rows = c.fetchall()
 		for row in rows:
 			name = str(row[0])
@@ -411,9 +428,11 @@ class BlackBeanSkill(MycroftSkill):
 			else:
 				if ip != None:
 					self.update_controller_ipaddr(c, name, ip)
+					dbh.commit()
 				status = "ready"
 			LOG.info("IR controller '" + name + "' at " +
 				ip_display + ": " + status)
+		c.close()
 		dbh.close()
 
 	def handle_find_controllers(self, message):
