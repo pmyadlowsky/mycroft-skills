@@ -53,8 +53,7 @@ class BlackBeanSkill(MycroftSkill):
 		self.scanning = False
 		self.controller_thread_running = False
 		self.command_queue = queue.Queue()
-		self.skill_path = os.path.dirname(os.path.realpath(__file__))
-		self.config_path = "/".join([self.skill_path, "config.db"])
+		self.config_path = "/".join([self.file_system.path, "config.db"])
 
     # The "handle_xxxx_intent" function is triggered by Mycroft when the
     # skill's intent is matched.  The intent is defined by the IntentBuilder()
