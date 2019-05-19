@@ -215,6 +215,22 @@ def dump_controller(obj):
 	print("\ttimeout:     " + str(obj['timeout']))
 	print("\tdevice type: " + str(obj['device_type']))
 
+def save_device(cursor, device, command_set, command_db):
+	dev_id = get_device_id(device, cursor)
+	if dev_id == None:
+		cursor.execute("insert into devices (name) values ('" +
+			device + "')")
+		dev_id = cursor.lastrowid
+	print("\n" + device + "(" + str(dev_id) + "):")
+	for command in command_set:
+		cursor.execute("delete from commands where (device=" +
+			str(dev_id) + ") and (command='" + command + "')")
+		key = device + ":" + command
+		cursor.execute("""insert into commands (device, command, code)
+			values (%d, '%s', '%s')""" %
+				(dev_id, command, command_db[key]))
+		print("\t" + command + ": " + str(command_db[key]))
+
 def save_controller(cursor, controller):
 	con_id = get_controller_id(controller, cursor)
 	if con_id == None:
@@ -243,12 +259,9 @@ signal.signal(signal.SIGINT, cancel)
 signal.signal(signal.SIGTERM, cancel)
 
 learn_timeout = 20
-command_set = {}
-command_db = {}
 devices = []
 device_groups = []
 controllers = []
-build_db = False
 
 header("Set up controllers")
 
@@ -264,6 +277,8 @@ while True:
 		break
 
 if len(controllers) > 0:
+	dbh = open_db()
+	c = dbh.cursor()
 	for controller in controllers:
 		while True:
 			print("Configure controller '" + controller['name'] + "'...")
@@ -280,8 +295,11 @@ if len(controllers) > 0:
 			dump_controller(controller)
 			prompt("configuration correct?")
 			if yesno():
-				build_db = True
+				save_controller(c, controller)
 				break
+	c.close()
+	dbh.commit()
+	dbh.close
 
 header("Set up devices/groups")
 
@@ -302,25 +320,32 @@ while True:
 
 if len(devices) > 0:
 	header("Set up device commands")
+	command_set = {}
 	for device in devices:
 		command_set[device] = get_command_list(device)
 	controller = open_controller("blackbean")
 	header("Aim remote at IR receiver (hit Enter when ready)...")
 	sys.stdin.readline()
+	dbh = open_db()
+	c = dbh.cursor()
 	for device in devices:
 		db = learn_device(device, command_set[device],
 					controller, learn_timeout)
 		if db != None:
-			build_db = True
-			command_db.update(db)
+			save_device(c, device, command_set[device], db)
+	c.close()
+	dbh.commit()
+	dbh.close()
 	print("\nDevice IR programming done.")
 
 if len(device_groups) > 0:
 	header("Set up device group commands")
+	command_set = {}
 	for device in device_groups:
 		command_set[device] = get_command_list(device)
 	dbh = open_db()
 	c = dbh.cursor()
+	db = {}
 	for device in device_groups:
 		for command in command_set[device]:
 			prompt("Command sequence for " + device + ":" + command)
@@ -331,34 +356,10 @@ if len(device_groups) > 0:
 					valid = False
 					break
 			if valid:
-				build_db = True
-				command_db[device + ":" + command] = command_seq(cmds)
+				db[device + ":" + command] = command_seq(cmds)
+		save_device(c, device, command_set[device], db)
 	c.close()
-	dbh.close()
-
-if build_db:
-	header("Building database...")
-	dbh = open_db()
-	c = dbh.cursor()
-	for device in devices + device_groups:
-		dev_id = get_device_id(device, c)
-		if dev_id == None:
-			c.execute("insert into devices (name) values ('" +
-				device + "')")
-			dev_id = c.lastrowid
-		print("\n" + device + "(" + str(dev_id) + "):")
-		for command in command_set[device]:
-			c.execute("delete from commands where (device=" +
-				str(dev_id) + ") and (command='" + command + "')")
-			key = device + ":" + command
-			c.execute("""insert into commands (device, command, code)
-				values (%d, '%s', '%s')""" %
-					(dev_id, command, command_db[key]))
-			print("\t" + command + ": " + str(command_db[key]))
-	for controller in controllers:
-		save_controller(c, controller)
 	dbh.commit()
-	c.close()
 	dbh.close()
 
 header("Done.")
