@@ -53,7 +53,7 @@ class BlackBeanSkill(MycroftSkill):
 		self.controller_thread = None
 		self.scan_thread = None
 		self.scanning = False
-		self.controller_thread_running = False
+		self.command_thread_running = False
 		self.command_queue = queue.Queue()
 		self.config_path = "/".join([self.file_system.path, "config.db"])
 
@@ -76,8 +76,9 @@ class BlackBeanSkill(MycroftSkill):
     # it.
     #
 	def stop(self):
-		if self.controller_thread_running:
-			self.controller_thread_running = False
+		LOG.info("STOPPING BLACKBEAN")
+		if self.command_thread_running:
+			self.command_thread_running = False
 			self.controller_thread.join()
 		self.stop_scan_thread()
 		return True
@@ -247,6 +248,9 @@ class BlackBeanSkill(MycroftSkill):
 			else:
 				decoded = binascii.a2b_hex(cmd)
 				if self.use_command_thread:
+					if not self.command_thread_running:
+						LOG.info("RESTART COMMAND THREAD")
+						self.start_command_thread()
 					self.command_queue.put(decoded)
 				else:
 					self.controller.send_data(decoded)
@@ -313,11 +317,11 @@ class BlackBeanSkill(MycroftSkill):
 				elif directive == "DIGITS":
 					command_stream = self.vary_command(command, count)
 #			LOG.info("STREAM " + command_stream)
+			self.speak_dialog(response)
 			if command == "":
 				LOG.info("NULL COMMAND")
 			else:
 				self.send_command(command_stream)
-			self.speak_dialog(response)
 		return handler
 			
 	def add_command(self, verbs, device_command, response):
@@ -335,8 +339,8 @@ class BlackBeanSkill(MycroftSkill):
 
 	def process_commands(self):
 		LOG.info("ENTER COMMAND THREAD")
-		self.controller_thread_running = True
-		while self.controller_thread_running:
+		self.command_thread_running = True
+		while self.command_thread_running:
 			try:
 				code = self.command_queue.get(timeout=2.0)
 				if self.controller != None:
@@ -364,13 +368,16 @@ class BlackBeanSkill(MycroftSkill):
 		LOG.info("SCANNER STOPPED")
 		return
 
+	def start_command_thread(self):
+		self.controller_thread = \
+			threading.Thread(None, self.process_commands)
+		self.controller_thread.start()
+
 	def initialize(self):
 		# compose verbal command grammar and command responses
 		self.probe_net()
 		if self.use_command_thread:
-			self.controller_thread = \
-				threading.Thread(None, self.process_commands)
-			self.controller_thread.start()
+			self.start_command_thread()
 		self.add_command(["TV", "Power"], "TV:PWR", "power.toggle")
 		self.add_command(["TV", "Mute"], "TV:MUTE", "mute.toggle")
 		self.add_command(["Channel", "Up", "#REP"],
