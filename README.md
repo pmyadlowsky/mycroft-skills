@@ -6,6 +6,7 @@ This skill uses the [python-broadlink](https://github.com/mjg59/python-broadlink
 
 One objective is to make this skill as data-driven as possible, so intent handlers are composed at initialization time by generating them as closures rather than hard-coding them. A data grammar is devised that should cover a wide range of control needs.
 
+Configuration data for IR controllers, IR receivers (devices) and device commands is stored in sqlite3 database ~/.mycroft/skills/BlackBeanSkill/config.db
 ## Examples
 
 ## Credits
